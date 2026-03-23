@@ -1,0 +1,34 @@
+#!/bin/bash
+
+source /usr/share/yunohost/helpers
+
+#=================================================
+# REMOVE SYSTEM CONFIGURATIONS
+#=================================================
+ynh_script_progression "Removing system configurations related to $app..."
+
+if ynh_hide_warnings yunohost service status "$app" >/dev/null; then
+    yunohost service remove "$app"
+fi
+
+ynh_config_remove_systemd
+
+ynh_config_remove_nginx
+
+#=================================================
+# REMOVE DATABASE
+#=================================================
+
+if [ "${database:-}" == "mysql" ]; then
+    ynh_script_progression "Removing MySQL database..."
+    ynh_mysql_remove_db --db_user="$db_user" --db_name="$db_name"
+elif [ "${database:-}" == "postgresql" ]; then
+    ynh_script_progression "Removing PostgreSQL database..."
+    ynh_psql_remove_db --db_user="$db_user" --db_name="$db_name"
+fi
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Removal of $app completed"

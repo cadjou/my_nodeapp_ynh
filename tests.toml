@@ -1,0 +1,29 @@
+[default]
+
+    # All tests are enabled by default for all args combinations
+
+    args.nodejs_version = "20"
+    args.package_manager = "npm"
+    args.database = "none"
+    args.with_sftp = false
+
+[with_mysql]
+
+    args.database = "mysql"
+
+[with_postgresql]
+
+    args.database = "postgresql"
+
+[with_sftp]
+
+    args.with_sftp = true
+    args.password = "test1234"
+
+[with_pnpm]
+
+    args.package_manager = "pnpm"
+
+[with_yarn]
+
+    args.package_manager = "yarn"

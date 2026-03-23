@@ -1,0 +1,112 @@
+#!/bin/bash
+
+source /usr/share/yunohost/helpers
+
+#=================================================
+# STOP SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Stopping $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="stop"
+
+#=================================================
+# ENSURE DOWNWARD COMPATIBILITY
+#=================================================
+ynh_script_progression "Ensuring downward compatibility..."
+
+# Ensure settings exist with defaults
+if [ -z "${package_manager:-}" ]; then
+    package_manager="npm"
+    ynh_app_setting_set --key=package_manager --value="$package_manager"
+fi
+
+if [ -z "${database:-}" ]; then
+    database="none"
+    ynh_app_setting_set --key=database --value="$database"
+fi
+
+if [ -z "${with_sftp:-}" ]; then
+    with_sftp=0
+    ynh_app_setting_set --key=with_sftp --value="$with_sftp"
+fi
+
+#=================================================
+# INSTALL NODE.JS DEPENDENCIES
+#=================================================
+ynh_script_progression "Installing Node.js dependencies..."
+
+pushd "$install_dir"
+    case "$package_manager" in
+        npm)
+            ynh_hide_warnings ynh_exec_as_app npm install --production
+            ;;
+        pnpm)
+            ynh_hide_warnings corepack enable
+            ynh_hide_warnings ynh_exec_as_app pnpm install --prod
+            ;;
+        yarn)
+            ynh_hide_warnings corepack enable
+            ynh_hide_warnings ynh_exec_as_app yarn install --production
+            ;;
+    esac
+popd
+
+#=================================================
+# REGENERATE .env FILE
+#=================================================
+ynh_script_progression "Updating configuration..."
+
+{
+    echo "NODE_ENV=production"
+    echo "PORT=$port"
+    echo "DOMAIN=$domain"
+    echo "PATH_PREFIX=$path"
+} > "$install_dir/.env"
+
+if [ "$database" != "none" ]; then
+    {
+        echo "DB_TYPE=$database"
+        echo "DB_NAME=${db_name:-}"
+        echo "DB_USER=${db_user:-}"
+        echo "DB_PWD=${db_pwd:-}"
+        echo "DB_HOST=localhost"
+    } >> "$install_dir/.env"
+fi
+
+#=================================================
+# SET PERMISSIONS
+#=================================================
+
+chmod -R o-rwx "$install_dir"
+chown -R "$app:www-data" "$install_dir"
+
+if [ "$with_sftp" -eq 1 ]; then
+    chown root:root "$install_dir"
+    setfacl -m g:"$app":r-x "$install_dir"
+    setfacl -m g:www-data:r-x "$install_dir"
+    chmod 750 "$install_dir"
+fi
+
+#=================================================
+# REAPPLY SYSTEM CONFIGURATIONS
+#=================================================
+ynh_script_progression "Upgrading system configurations..."
+
+ynh_config_add_nginx
+
+ynh_config_add_systemd
+
+yunohost service add "$app" --description="Node.js app ($app)"
+
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Starting $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="start"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Upgrade of $app completed"

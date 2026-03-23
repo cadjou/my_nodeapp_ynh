@@ -1,0 +1,130 @@
+#!/bin/bash
+
+source /usr/share/yunohost/helpers
+
+#=================================================
+# VALIDATE INSTALLATION PARAMETERS
+#=================================================
+
+[ "$with_sftp" -eq 0 ] || [ "$password" != "" ] || ynh_die "You need to set a password to enable SFTP"
+
+#=================================================
+# CREATE A DATABASE
+#=================================================
+
+if [ "$database" != "none" ]; then
+    ynh_script_progression "Creating a database..."
+
+    db_name=$(ynh_sanitize_dbid "$app")
+    db_user="$db_name"
+    db_pwd=$(ynh_string_random --length=30)
+    ynh_app_setting_set --key=db_name --value="$db_name"
+    ynh_app_setting_set --key=db_user --value="$db_user"
+    ynh_app_setting_set --key=db_pwd --value="$db_pwd"
+
+    if [ "$database" == "mysql" ]; then
+        ynh_mysql_setup_db --db_user="$db_user" --db_name="$db_name" --db_pwd="$db_pwd"
+    elif [ "$database" == "postgresql" ]; then
+        ynh_psql_setup_db --db_user="$db_user" --db_name="$db_name" --db_pwd="$db_pwd"
+    fi
+fi
+
+#=================================================
+# DEPLOY APPLICATION FILES
+#=================================================
+ynh_script_progression "Setting up application files..."
+
+cp -a "../sources/extra_files/." "$install_dir/"
+
+#=================================================
+# INSTALL NODE.JS DEPENDENCIES
+#=================================================
+ynh_script_progression "Installing Node.js dependencies..."
+
+pushd "$install_dir"
+    case "$package_manager" in
+        npm)
+            ynh_hide_warnings ynh_exec_as_app npm install --production
+            ;;
+        pnpm)
+            ynh_hide_warnings corepack enable
+            ynh_hide_warnings ynh_exec_as_app pnpm install --prod
+            ;;
+        yarn)
+            ynh_hide_warnings corepack enable
+            ynh_hide_warnings ynh_exec_as_app yarn install --production
+            ;;
+    esac
+popd
+
+#=================================================
+# GENERATE .env FILE
+#=================================================
+ynh_script_progression "Generating configuration..."
+
+{
+    echo "NODE_ENV=production"
+    echo "PORT=$port"
+    echo "DOMAIN=$domain"
+    echo "PATH_PREFIX=$path"
+} > "$install_dir/.env"
+
+if [ "$database" != "none" ]; then
+    {
+        echo "DB_TYPE=$database"
+        echo "DB_NAME=$db_name"
+        echo "DB_USER=$db_user"
+        echo "DB_PWD=$db_pwd"
+        echo "DB_HOST=localhost"
+    } >> "$install_dir/.env"
+fi
+
+#=================================================
+# SET PERMISSIONS
+#=================================================
+ynh_script_progression "Setting permissions..."
+
+chmod -R o-rwx "$install_dir"
+chown -R "$app:www-data" "$install_dir"
+
+#=================================================
+# CONFIGURE SFTP
+#=================================================
+
+if [ "$with_sftp" -eq 1 ]; then
+    ynh_script_progression "Configuring SFTP access..."
+
+    # User already created by [resources.system_user], just add to sftp group
+    usermod -aG sftp.app "$app"
+    chpasswd <<< "${app}:${password}"
+
+    # Home directory must be owned by root for SFTP chroot
+    chown root:root "$install_dir"
+    setfacl -m g:"$app":r-x "$install_dir"
+    setfacl -m g:www-data:r-x "$install_dir"
+    chmod 750 "$install_dir"
+fi
+
+#=================================================
+# SYSTEM CONFIGURATION
+#=================================================
+ynh_script_progression "Adding system configurations..."
+
+ynh_config_add_nginx
+
+ynh_config_add_systemd
+
+yunohost service add "$app" --description="Node.js app ($app)"
+
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Starting $app's systemd service..."
+
+ynh_systemctl --service="$app" --action="start"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Installation of $app completed"

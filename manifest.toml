@@ -1,0 +1,95 @@
+#:schema https://raw.githubusercontent.com/YunoHost/apps/master/schemas/manifest.v2.schema.json
+
+packaging_format = 2
+
+id = "my_nodeapp"
+name = "My Node App"
+description.en = "Custom Node.js web application with optional SFTP access"
+description.fr = "Application web Node.js personnalisée avec accès SFTP optionnel"
+
+version = "1.0~ynh1"
+
+maintainers = []
+
+[upstream]
+license = "GPL-3.0-only"
+
+[integration]
+yunohost = ">= 12.0"
+helpers_version = "2.1"
+architectures = "all"
+multi_instance = true
+ldap = "not_relevant"
+sso = "not_relevant"
+disk = "50M"
+ram.build = "200M"
+ram.runtime = "50M"
+
+[install]
+    [install.domain]
+    type = "domain"
+
+    [install.path]
+    type = "path"
+    default = "/nodeapp"
+
+    [install.nodejs_version]
+    ask.en = "Choose the Node.js version"
+    ask.fr = "Choisissez la version de Node.js"
+    type = "select"
+    choices = ["18", "20", "22"]
+    default = "20"
+
+    [install.package_manager]
+    ask.en = "Choose the package manager"
+    ask.fr = "Choisissez le gestionnaire de paquets"
+    type = "select"
+    choices = ["npm", "pnpm", "yarn"]
+    default = "npm"
+
+    [install.database]
+    ask.en = "Do you need a database?"
+    ask.fr = "Avez-vous besoin d'une base de données ?"
+    type = "select"
+    choices = ["none", "mysql", "postgresql"]
+    default = "none"
+
+    [install.with_sftp]
+    ask.en = "Do you need SFTP access?"
+    ask.fr = "Avez-vous besoin d'un accès SFTP ?"
+    type = "boolean"
+    default = false
+
+    [install.password]
+    type = "password"
+    optional = true
+    help.en = "Required if SFTP access is enabled"
+    help.fr = "Requis si l'accès SFTP est activé"
+
+    [install.init_main_permission]
+    type = "group"
+    default = "visitors"
+
+[resources]
+    [resources.system_user]
+
+    [resources.install_dir]
+
+    [resources.permissions]
+    main.url = "/"
+
+    [resources.ports]
+    main.default = 3000
+
+    [resources.apt]
+    packages = "nginx"
+    packages_from_raw_bash = """
+        if [[ "$database" == "mysql" ]]; then
+            echo "mariadb-server"
+        elif [[ "$database" == "postgresql" ]]; then
+            echo "postgresql postgresql-contrib"
+        fi
+    """
+
+    [resources.nodejs]
+    version = "20"
