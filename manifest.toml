@@ -82,7 +82,7 @@ ram.runtime = "50M"
     main.default = 3000
 
     [resources.apt]
-    packages = "nginx"
+    packages = "nginx git"
     packages_from_raw_bash = """
         if [[ "$database" == "mysql" ]]; then
             echo "mariadb-server"

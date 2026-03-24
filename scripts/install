@@ -17,6 +17,14 @@ ssh_port=$(grep "^Port" /etc/ssh/sshd_config | awk '{print $2}')
 ynh_app_setting_set --key=sftp_user --value="$app"
 ynh_app_setting_set --key=sftp_port --value="${ssh_port:-22}"
 
+# Initialize git settings (required by config_panel)
+ynh_app_setting_set --key=git_enabled --value="0"
+ynh_app_setting_set --key=git_url --value=""
+ynh_app_setting_set --key=git_branch --value="main"
+ynh_app_setting_set --key=git_auth_method --value="none"
+ynh_app_setting_set --key=git_token --value=""
+ynh_app_setting_set --key=git_ssh_key --value=""
+
 #=================================================
 # CREATE A DATABASE
 #=================================================

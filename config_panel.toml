@@ -56,3 +56,99 @@ name.fr = "Configuration de My Node App"
         type = "select"
         choices = ["npm", "pnpm", "yarn"]
         default = "npm"
+
+    [main.tools]
+    name.en = "Node.js tools"
+    name.fr = "Outils Node.js"
+
+        [main.tools.action_install_deps]
+        ask.en = "Reinstall dependencies"
+        ask.fr = "Réinstaller les dépendances"
+        type = "button"
+        style = "warning"
+        help.en = "Runs npm/pnpm/yarn install in the www/ directory."
+        help.fr = "Lance npm/pnpm/yarn install dans le répertoire www/."
+
+        [main.tools.action_restart]
+        ask.en = "Restart the service"
+        ask.fr = "Redémarrer le service"
+        type = "button"
+        style = "warning"
+
+        [main.tools.action_build]
+        ask.en = "Run build script"
+        ask.fr = "Lancer le script build"
+        type = "button"
+        style = "info"
+        help.en = "Runs 'npm run build' if a build script exists in package.json."
+        help.fr = "Lance 'npm run build' si un script build existe dans package.json."
+
+    [main.git]
+    name.en = "Git deployment"
+    name.fr = "Déploiement Git"
+
+        [main.git.git_enabled]
+        ask.en = "Enable Git deployment?"
+        ask.fr = "Activer le déploiement Git ?"
+        type = "boolean"
+        default = false
+
+        [main.git.git_url]
+        ask.en = "Git repository URL"
+        ask.fr = "URL du dépôt Git"
+        type = "url"
+        optional = true
+        visible = "git_enabled"
+        help.en = "HTTPS or SSH URL (e.g. https://github.com/user/repo.git or git@gitea.example.com:user/repo.git)"
+        help.fr = "URL HTTPS ou SSH (ex: https://github.com/user/repo.git ou git@gitea.example.com:user/repo.git)"
+
+        [main.git.git_branch]
+        ask.en = "Branch to deploy"
+        ask.fr = "Branche à déployer"
+        type = "string"
+        default = "main"
+        visible = "git_enabled"
+
+        [main.git.git_auth_method]
+        ask.en = "Authentication method"
+        ask.fr = "Méthode d'authentification"
+        type = "select"
+        choices.none = "Public repository"
+        choices.token = "HTTPS token (GitHub PAT, Gitea token...)"
+        choices.ssh = "SSH key"
+        default = "none"
+        visible = "git_enabled"
+
+        [main.git.git_token]
+        ask.en = "Access token"
+        ask.fr = "Token d'accès"
+        type = "password"
+        optional = true
+        visible = "git_auth_method == 'token'"
+        help.en = "Personal access token with read access to the repository."
+        help.fr = "Token d'accès personnel avec accès en lecture au dépôt."
+
+        [main.git.git_ssh_key]
+        ask.en = "SSH private key"
+        ask.fr = "Clé privée SSH"
+        type = "text"
+        optional = true
+        visible = "git_auth_method == 'ssh'"
+        help.en = "Paste your SSH private key here. It will be stored securely in the app's data directory."
+        help.fr = "Collez votre clé privée SSH ici. Elle sera stockée de manière sécurisée dans le répertoire data de l'app."
+
+        [main.git.git_deploy_warning]
+        type = "alert"
+        style = "warning"
+        ask.en = "Deploying from Git will replace all files in the www/ directory. Make sure to backup your data before deploying if you have local modifications."
+        ask.fr = "Le déploiement depuis Git remplacera tous les fichiers du répertoire www/. Pensez à sauvegarder vos données avant de déployer si vous avez des modifications locales."
+        visible = "git_enabled"
+
+        [main.git.action_git_deploy]
+        ask.en = "Deploy from Git"
+        ask.fr = "Déployer depuis Git"
+        type = "button"
+        style = "success"
+        visible = "git_enabled"
+        help.en = "Clone or pull the repository into the www/ directory, then install dependencies and restart."
+        help.fr = "Clone ou pull le dépôt dans le répertoire www/, puis installe les dépendances et redémarre."

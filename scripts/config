@@ -5,6 +5,28 @@ source /usr/share/yunohost/helpers
 ynh_abort_if_errors
 
 #=================================================
+# HELPER: Install deps with the configured package manager
+#=================================================
+
+_install_deps() {
+    pushd "$install_dir/www"
+        case "${package_manager:-npm}" in
+            npm)
+                ynh_hide_warnings ynh_exec_as_app npm install --production
+                ;;
+            pnpm)
+                ynh_hide_warnings corepack enable
+                ynh_hide_warnings ynh_exec_as_app pnpm install --prod
+                ;;
+            yarn)
+                ynh_hide_warnings corepack enable
+                ynh_hide_warnings ynh_exec_as_app yarn install --production
+                ;;
+        esac
+    popd
+}
+
+#=================================================
 # SPECIFIC SETTERS FOR TOML SHORT KEYS
 #=================================================
 
@@ -12,6 +34,145 @@ set__password() {
     if [ ! "$password" == "" ]; then
         ynh_app_setting_set --key=password --value="$password"
     fi
+}
+
+#=================================================
+# BUTTON ACTIONS — Node.js tools
+#=================================================
+
+set__action_install_deps() {
+    ynh_script_progression "Reinstalling dependencies..."
+    _install_deps
+    ynh_script_progression "Dependencies reinstalled."
+}
+
+set__action_restart() {
+    ynh_script_progression "Restarting service..."
+    ynh_systemctl --service="$app" --action="restart"
+    ynh_script_progression "Service restarted."
+}
+
+set__action_build() {
+    ynh_script_progression "Running build script..."
+    pushd "$install_dir/www"
+        # Check if a build script exists in package.json
+        if [ -f "package.json" ] && grep -q '"build"' "package.json"; then
+            case "${package_manager:-npm}" in
+                npm)
+                    ynh_hide_warnings ynh_exec_as_app npm run build
+                    ;;
+                pnpm)
+                    ynh_hide_warnings ynh_exec_as_app pnpm run build
+                    ;;
+                yarn)
+                    ynh_hide_warnings ynh_exec_as_app yarn run build
+                    ;;
+            esac
+            ynh_script_progression "Build completed."
+        else
+            ynh_script_progression "No build script found in package.json, skipping."
+        fi
+    popd
+}
+
+#=================================================
+# BUTTON ACTIONS — Git deployment
+#=================================================
+
+set__action_git_deploy() {
+    ynh_script_progression "Deploying from Git..."
+
+    local git_url_auth="$git_url"
+
+    # Setup authentication
+    case "${git_auth_method:-none}" in
+        token)
+            # Insert token into HTTPS URL: https://TOKEN@github.com/user/repo.git
+            if [ -n "${git_token:-}" ]; then
+                git_url_auth=$(echo "$git_url" | sed "s|https://|https://${git_token}@|")
+            fi
+            ;;
+        ssh)
+            # Setup SSH key
+            local ssh_dir="$install_dir/data/.ssh"
+            mkdir -p "$ssh_dir"
+            if [ -n "${git_ssh_key:-}" ]; then
+                echo "$git_ssh_key" > "$ssh_dir/id_deploy"
+                chmod 600 "$ssh_dir/id_deploy"
+                chmod 700 "$ssh_dir"
+                chown -R "$app:$app" "$ssh_dir"
+                # Create SSH config to use this key and skip host verification
+                cat > "$ssh_dir/config" <<SSHEOF
+Host *
+    IdentityFile $ssh_dir/id_deploy
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+SSHEOF
+                chmod 600 "$ssh_dir/config"
+                chown "$app:$app" "$ssh_dir/config"
+            fi
+            export GIT_SSH_COMMAND="ssh -F $ssh_dir/config"
+            ;;
+    esac
+
+    local git_branch="${git_branch:-main}"
+
+    if [ -d "$install_dir/www/.git" ]; then
+        # Existing repo: fetch and pull
+        ynh_script_progression "Pulling latest changes..."
+        pushd "$install_dir/www"
+            ynh_hide_warnings ynh_exec_as_app git fetch --all
+            ynh_hide_warnings ynh_exec_as_app git checkout "$git_branch"
+            ynh_hide_warnings ynh_exec_as_app git pull origin "$git_branch"
+        popd
+    else
+        # Fresh clone: backup node_modules if exists, clone, restore
+        ynh_script_progression "Cloning repository..."
+        local had_node_modules=false
+        if [ -d "$install_dir/www/node_modules" ]; then
+            had_node_modules=true
+            mv "$install_dir/www/node_modules" "$install_dir/data/_node_modules_backup"
+        fi
+
+        # Clean www/ and clone
+        rm -rf "$install_dir/www"
+        ynh_hide_warnings git clone -b "$git_branch" "$git_url_auth" "$install_dir/www"
+        chown -R "$app:www-data" "$install_dir/www"
+        chmod -R o-rwx "$install_dir/www"
+
+        # Restore node_modules to speed up install
+        if [ "$had_node_modules" = true ] && [ -d "$install_dir/data/_node_modules_backup" ]; then
+            mv "$install_dir/data/_node_modules_backup" "$install_dir/www/node_modules"
+        fi
+    fi
+
+    # Post-deploy: install deps
+    ynh_script_progression "Installing dependencies..."
+    _install_deps
+
+    # Post-deploy: run build if exists
+    if [ -f "$install_dir/www/package.json" ] && grep -q '"build"' "$install_dir/www/package.json"; then
+        ynh_script_progression "Running build..."
+        pushd "$install_dir/www"
+            case "${package_manager:-npm}" in
+                npm)
+                    ynh_hide_warnings ynh_exec_as_app npm run build
+                    ;;
+                pnpm)
+                    ynh_hide_warnings ynh_exec_as_app pnpm run build
+                    ;;
+                yarn)
+                    ynh_hide_warnings ynh_exec_as_app yarn run build
+                    ;;
+            esac
+        popd
+    fi
+
+    # Restart service
+    ynh_script_progression "Restarting service..."
+    ynh_systemctl --service="$app" --action="restart"
+
+    ynh_script_progression "Git deployment completed."
 }
 
 #=================================================
@@ -43,21 +204,7 @@ ynh_app_config_apply() {
         systemctl daemon-reload
 
         # Reinstall dependencies with new Node.js version
-        pushd "$install_dir/www"
-            case "${package_manager:-npm}" in
-                npm)
-                    ynh_hide_warnings ynh_exec_as_app npm install --production
-                    ;;
-                pnpm)
-                    ynh_hide_warnings corepack enable
-                    ynh_hide_warnings ynh_exec_as_app pnpm install --prod
-                    ;;
-                yarn)
-                    ynh_hide_warnings corepack enable
-                    ynh_hide_warnings ynh_exec_as_app yarn install --production
-                    ;;
-            esac
-        popd
+        _install_deps
 
         # Restart service
         ynh_systemctl --service="$app" --action="restart"
@@ -66,23 +213,7 @@ ynh_app_config_apply() {
     # Package manager changed
     if [ "${changed[package_manager]}" == "true" ]; then
         ynh_script_progression "Reinstalling dependencies with $package_manager..."
-
-        pushd "$install_dir/www"
-            case "$package_manager" in
-                npm)
-                    ynh_hide_warnings ynh_exec_as_app npm install --production
-                    ;;
-                pnpm)
-                    ynh_hide_warnings corepack enable
-                    ynh_hide_warnings ynh_exec_as_app pnpm install --prod
-                    ;;
-                yarn)
-                    ynh_hide_warnings corepack enable
-                    ynh_hide_warnings ynh_exec_as_app yarn install --production
-                    ;;
-            esac
-        popd
-
+        _install_deps
         ynh_systemctl --service="$app" --action="restart"
     fi
 
@@ -94,7 +225,6 @@ ynh_app_config_apply() {
             chpasswd <<< "${app}:${password}"
         fi
 
-        # Set permissions for SFTP chroot
         chown root:root "$install_dir"
         setfacl -m g:"$app":r-x "$install_dir"
         setfacl -m g:www-data:r-x "$install_dir"
@@ -111,6 +241,24 @@ ynh_app_config_apply() {
     # Password changed
     if [ "${changed[password]}" == "true" ] && [ ! "$password" == "" ]; then
         chpasswd <<< "${app}:${password}"
+    fi
+
+    # SSH key changed — store it
+    if [ "${changed[git_ssh_key]}" == "true" ] && [ -n "${git_ssh_key:-}" ]; then
+        local ssh_dir="$install_dir/data/.ssh"
+        mkdir -p "$ssh_dir"
+        echo "$git_ssh_key" > "$ssh_dir/id_deploy"
+        chmod 600 "$ssh_dir/id_deploy"
+        chmod 700 "$ssh_dir"
+        chown -R "$app:$app" "$ssh_dir"
+        cat > "$ssh_dir/config" <<SSHEOF
+Host *
+    IdentityFile $ssh_dir/id_deploy
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+SSHEOF
+        chmod 600 "$ssh_dir/config"
+        chown "$app:$app" "$ssh_dir/config"
     fi
 }
 
