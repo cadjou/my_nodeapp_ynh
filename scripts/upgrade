@@ -61,11 +61,16 @@ popd
 #=================================================
 ynh_script_progression "Updating configuration..."
 
+ssh_port=$(grep "^Port" /etc/ssh/sshd_config | awk '{print $2}')
+
 {
     echo "NODE_ENV=production"
     echo "PORT=$port"
     echo "DOMAIN=$domain"
     echo "PATH_PREFIX=$path"
+    echo "APP_USER=$app"
+    echo "SSH_PORT=${ssh_port:-22}"
+    echo "WITH_SFTP=$with_sftp"
 } > "$install_dir/.env"
 
 if [ "$database" != "none" ]; then
