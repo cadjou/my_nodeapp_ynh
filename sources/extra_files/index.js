@@ -2,21 +2,6 @@ const http = require("http");
 
 const port = process.env.PORT || 3000;
 const domain = process.env.DOMAIN || "localhost";
-const sshPort = process.env.SSH_PORT || "22";
-const appUser = process.env.APP_USER || "";
-const withSftp = process.env.WITH_SFTP === "1";
-
-const sftpSection = withSftp ? `
-    <h2>SFTP Access</h2>
-    <p>You can edit your files using an SFTP client such as
-        <a href="https://filezilla-project.org/download.php?type=client" target="_blank">FileZilla</a>.
-    </p>
-    <table>
-        <tr><td><strong>Host</strong></td><td><code>${domain}</code></td></tr>
-        <tr><td><strong>Port</strong></td><td><code>${sshPort}</code></td></tr>
-        <tr><td><strong>User</strong></td><td><code>${appUser}</code></td></tr>
-        <tr><td><strong>Password</strong></td><td><em>the one you set at installation</em></td></tr>
-    </table>` : "";
 
 const server = http.createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -49,7 +34,7 @@ const server = http.createServer((req, res) => {
         <tr><td><strong>Port</strong></td><td><code>${port}</code></td></tr>
         <tr><td><strong>Domain</strong></td><td><code>${domain}</code></td></tr>
     </table>
-    ${sftpSection}
+
 </body>
 </html>`);
 });

@@ -14,6 +14,20 @@ name.fr = "Configuration de My Node App"
         type = "boolean"
         default = false
 
+        [main.sftp.sftp_user]
+        ask.en = "SFTP username"
+        ask.fr = "Nom d'utilisateur SFTP"
+        type = "string"
+        readonly = true
+        visible = "with_sftp"
+
+        [main.sftp.sftp_port]
+        ask.en = "SSH port"
+        ask.fr = "Port SSH"
+        type = "string"
+        readonly = true
+        visible = "with_sftp"
+
         [main.sftp.password]
         ask.en = "Set a password for the SFTP access"
         ask.fr = "Définir un mot de passe pour l'accès SFTP"

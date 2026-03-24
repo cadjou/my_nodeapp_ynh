@@ -8,8 +8,14 @@ source /usr/share/yunohost/helpers
 
 [ "$with_sftp" -eq 0 ] || [ "$password" != "" ] || ynh_die "You need to set a password to enable SFTP"
 
-# Ensure password setting is always initialized (required by config_panel)
+# Ensure settings are initialized (required by config_panel)
 ynh_app_setting_set --key=password --value="${password:-}"
+ynh_app_setting_set --key=nodejs_version --value="${nodejs_version%%.*}"
+
+# Store SFTP connection info for config_panel display
+ssh_port=$(grep "^Port" /etc/ssh/sshd_config | awk '{print $2}')
+ynh_app_setting_set --key=sftp_user --value="$app"
+ynh_app_setting_set --key=sftp_port --value="${ssh_port:-22}"
 
 #=================================================
 # CREATE A DATABASE
@@ -64,8 +70,6 @@ popd
 # GENERATE .env FILE
 #=================================================
 ynh_script_progression "Generating configuration..."
-
-ssh_port=$(grep "^Port" /etc/ssh/sshd_config | awk '{print $2}')
 
 {
     echo "NODE_ENV=production"
