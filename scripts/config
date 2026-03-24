@@ -1,0 +1,117 @@
+#!/bin/bash
+
+source /usr/share/yunohost/helpers
+
+ynh_abort_if_errors
+
+#=================================================
+# SPECIFIC SETTERS FOR TOML SHORT KEYS
+#=================================================
+
+set__password() {
+    if [ ! "$password" == "" ]; then
+        ynh_app_setting_set --key=password --value="$password"
+    fi
+}
+
+#=================================================
+# GENERIC FINALIZATION
+#=================================================
+
+ynh_app_config_validate() {
+    _ynh_app_config_validate
+
+    if [ "${changed[with_sftp]}" == "true" ] && [ "$with_sftp" -eq 1 ] && [ "$password" == "" ]; then
+        ynh_die "You need to set a password to enable SFTP"
+    fi
+}
+
+ynh_app_config_apply() {
+    _ynh_app_config_apply
+
+    # Node.js version changed
+    if [ "${changed[nodejs_version]}" == "true" ]; then
+        ynh_script_progression "Switching Node.js to version $nodejs_version..."
+
+        ynh_nodejs_install
+
+        # Re-store major version only (ynh_nodejs_install overwrites with full version)
+        ynh_app_setting_set --key=nodejs_version --value="${nodejs_version%%.*}"
+
+        # Regenerate systemd service with new Node.js paths
+        ynh_config_add_systemd
+        systemctl daemon-reload
+
+        # Reinstall dependencies with new Node.js version
+        pushd "$install_dir/www"
+            case "${package_manager:-npm}" in
+                npm)
+                    ynh_hide_warnings ynh_exec_as_app npm install --production
+                    ;;
+                pnpm)
+                    ynh_hide_warnings corepack enable
+                    ynh_hide_warnings ynh_exec_as_app pnpm install --prod
+                    ;;
+                yarn)
+                    ynh_hide_warnings corepack enable
+                    ynh_hide_warnings ynh_exec_as_app yarn install --production
+                    ;;
+            esac
+        popd
+
+        # Restart service
+        ynh_systemctl --service="$app" --action="restart"
+    fi
+
+    # Package manager changed
+    if [ "${changed[package_manager]}" == "true" ]; then
+        ynh_script_progression "Reinstalling dependencies with $package_manager..."
+
+        pushd "$install_dir/www"
+            case "$package_manager" in
+                npm)
+                    ynh_hide_warnings ynh_exec_as_app npm install --production
+                    ;;
+                pnpm)
+                    ynh_hide_warnings corepack enable
+                    ynh_hide_warnings ynh_exec_as_app pnpm install --prod
+                    ;;
+                yarn)
+                    ynh_hide_warnings corepack enable
+                    ynh_hide_warnings ynh_exec_as_app yarn install --production
+                    ;;
+            esac
+        popd
+
+        ynh_systemctl --service="$app" --action="restart"
+    fi
+
+    # SFTP toggled on
+    if [ "${changed[with_sftp]}" == "true" ] && [ "$with_sftp" -eq 1 ]; then
+        usermod -aG sftp.app "$app"
+
+        if [ ! "$password" == "" ]; then
+            chpasswd <<< "${app}:${password}"
+        fi
+
+        # Set permissions for SFTP chroot
+        chown root:root "$install_dir"
+        setfacl -m g:"$app":r-x "$install_dir"
+        setfacl -m g:www-data:r-x "$install_dir"
+        chmod 750 "$install_dir"
+    fi
+
+    # SFTP toggled off
+    if [ "${changed[with_sftp]}" == "true" ] && [ "$with_sftp" -eq 0 ]; then
+        gpasswd -d "$app" sftp.app || true
+        chown -R "$app:www-data" "$install_dir"
+        chmod -R o-rwx "$install_dir"
+    fi
+
+    # Password changed
+    if [ "${changed[password]}" == "true" ] && [ ! "$password" == "" ]; then
+        chpasswd <<< "${app}:${password}"
+    fi
+}
+
+ynh_app_config_run $1
