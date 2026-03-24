@@ -49,6 +49,14 @@ mkdir -p "$install_dir/data"
 cp -a "../sources/extra_files/." "$install_dir/www/"
 
 #=================================================
+# INSTALL NODE.JS
+#=================================================
+ynh_script_progression "Installing Node.js $nodejs_version..."
+
+ynh_nodejs_install
+ynh_use_nodejs
+
+#=================================================
 # INSTALL NODE.JS DEPENDENCIES
 #=================================================
 ynh_script_progression "Installing Node.js dependencies..."

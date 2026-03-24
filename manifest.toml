@@ -91,5 +91,3 @@ ram.runtime = "50M"
         fi
     """
 
-    [resources.nodejs]
-    version = "20"

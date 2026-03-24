@@ -28,6 +28,14 @@ elif [ "${database:-}" == "postgresql" ]; then
 fi
 
 #=================================================
+# REINSTALL NODE.JS
+#=================================================
+ynh_script_progression "Reinstalling Node.js..."
+
+ynh_nodejs_install
+ynh_use_nodejs
+
+#=================================================
 # RESTORE SYSTEM CONFIGURATIONS
 #=================================================
 ynh_script_progression "Restoring system configurations..."

@@ -63,6 +63,14 @@ if [ -f "$install_dir/index.js" ] && [ ! -d "$install_dir/www" ]; then
 fi
 
 #=================================================
+# INSTALL / UPGRADE NODE.JS
+#=================================================
+ynh_script_progression "Installing Node.js $nodejs_version..."
+
+ynh_nodejs_install
+ynh_use_nodejs
+
+#=================================================
 # INSTALL NODE.JS DEPENDENCIES
 #=================================================
 ynh_script_progression "Installing Node.js dependencies..."
