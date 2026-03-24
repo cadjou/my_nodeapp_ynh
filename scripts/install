@@ -8,6 +8,9 @@ source /usr/share/yunohost/helpers
 
 [ "$with_sftp" -eq 0 ] || [ "$password" != "" ] || ynh_die "You need to set a password to enable SFTP"
 
+# Ensure password setting is always initialized (required by config_panel)
+ynh_app_setting_set --key=password --value="${password:-}"
+
 #=================================================
 # CREATE A DATABASE
 #=================================================
