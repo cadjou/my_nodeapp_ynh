@@ -54,7 +54,9 @@ cp -a "../sources/extra_files/." "$install_dir/www/"
 ynh_script_progression "Installing Node.js $nodejs_version..."
 
 ynh_nodejs_install
-ynh_use_nodejs
+
+# Re-store major version only (ynh_nodejs_install overwrites with full version like 20.20.1)
+ynh_app_setting_set --key=nodejs_version --value="${nodejs_version%%.*}"
 
 #=================================================
 # INSTALL NODE.JS DEPENDENCIES

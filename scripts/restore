@@ -33,7 +33,9 @@ fi
 ynh_script_progression "Reinstalling Node.js..."
 
 ynh_nodejs_install
-ynh_use_nodejs
+
+# Re-store major version only (ynh_nodejs_install overwrites with full version like 20.20.1)
+ynh_app_setting_set --key=nodejs_version --value="${nodejs_version%%.*}"
 
 #=================================================
 # RESTORE SYSTEM CONFIGURATIONS
