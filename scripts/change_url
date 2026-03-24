@@ -21,8 +21,8 @@ ynh_config_change_url_nginx
 #=================================================
 ynh_script_progression "Updating configuration..."
 
-sed -i "s|^DOMAIN=.*|DOMAIN=$new_domain|" "$install_dir/.env"
-sed -i "s|^PATH_PREFIX=.*|PATH_PREFIX=$new_path|" "$install_dir/.env"
+sed -i "s|^DOMAIN=.*|DOMAIN=$new_domain|" "$install_dir/data/.env"
+sed -i "s|^PATH_PREFIX=.*|PATH_PREFIX=$new_path|" "$install_dir/data/.env"
 
 #=================================================
 # START SYSTEMD SERVICE

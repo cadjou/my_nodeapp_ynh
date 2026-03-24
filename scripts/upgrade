@@ -43,12 +43,31 @@ ssh_port=$(grep "^Port" /etc/ssh/sshd_config | awk '{print $2}')
 ynh_app_setting_set --key=sftp_user --value="$app"
 ynh_app_setting_set --key=sftp_port --value="${ssh_port:-22}"
 
+# Migrate from flat structure to www/data if needed
+if [ -f "$install_dir/index.js" ] && [ ! -d "$install_dir/www" ]; then
+    ynh_script_progression "Migrating to www/data directory structure..."
+    mkdir -p "$install_dir/www"
+    mkdir -p "$install_dir/data"
+
+    # Move app files to www/
+    for item in "$install_dir"/*; do
+        basename=$(basename "$item")
+        if [ "$basename" != "www" ] && [ "$basename" != "data" ]; then
+            if [ "$basename" == ".env" ]; then
+                mv "$item" "$install_dir/data/.env"
+            else
+                mv "$item" "$install_dir/www/"
+            fi
+        fi
+    done
+fi
+
 #=================================================
 # INSTALL NODE.JS DEPENDENCIES
 #=================================================
 ynh_script_progression "Installing Node.js dependencies..."
 
-pushd "$install_dir"
+pushd "$install_dir/www"
     case "$package_manager" in
         npm)
             ynh_hide_warnings ynh_exec_as_app npm install --production
@@ -69,6 +88,8 @@ popd
 #=================================================
 ynh_script_progression "Updating configuration..."
 
+mkdir -p "$install_dir/data"
+
 {
     echo "NODE_ENV=production"
     echo "PORT=$port"
@@ -77,7 +98,7 @@ ynh_script_progression "Updating configuration..."
     echo "APP_USER=$app"
     echo "SSH_PORT=${ssh_port:-22}"
     echo "WITH_SFTP=$with_sftp"
-} > "$install_dir/.env"
+} > "$install_dir/data/.env"
 
 if [ "$database" != "none" ]; then
     {
@@ -86,7 +107,7 @@ if [ "$database" != "none" ]; then
         echo "DB_USER=${db_user:-}"
         echo "DB_PWD=${db_pwd:-}"
         echo "DB_HOST=localhost"
-    } >> "$install_dir/.env"
+    } >> "$install_dir/data/.env"
 fi
 
 #=================================================

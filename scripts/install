@@ -43,14 +43,17 @@ fi
 #=================================================
 ynh_script_progression "Setting up application files..."
 
-cp -a "../sources/extra_files/." "$install_dir/"
+mkdir -p "$install_dir/www"
+mkdir -p "$install_dir/data"
+
+cp -a "../sources/extra_files/." "$install_dir/www/"
 
 #=================================================
 # INSTALL NODE.JS DEPENDENCIES
 #=================================================
 ynh_script_progression "Installing Node.js dependencies..."
 
-pushd "$install_dir"
+pushd "$install_dir/www"
     case "$package_manager" in
         npm)
             ynh_hide_warnings ynh_exec_as_app npm install --production
@@ -79,7 +82,7 @@ ynh_script_progression "Generating configuration..."
     echo "APP_USER=$app"
     echo "SSH_PORT=${ssh_port:-22}"
     echo "WITH_SFTP=$with_sftp"
-} > "$install_dir/.env"
+} > "$install_dir/data/.env"
 
 if [ "$database" != "none" ]; then
     {
@@ -88,7 +91,7 @@ if [ "$database" != "none" ]; then
         echo "DB_USER=$db_user"
         echo "DB_PWD=$db_pwd"
         echo "DB_HOST=localhost"
-    } >> "$install_dir/.env"
+    } >> "$install_dir/data/.env"
 fi
 
 #=================================================
