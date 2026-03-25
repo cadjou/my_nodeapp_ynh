@@ -113,18 +113,18 @@ name.fr = "Configuration de My Node App"
         ask.en = "Authentication method"
         ask.fr = "Méthode d'authentification"
         type = "select"
-        choices.none = "Public repository"
-        choices.token = "HTTPS token (GitHub PAT, Gitea token...)"
-        choices.ssh = "SSH key"
+        choices = ["none", "token", "ssh"]
         default = "none"
         visible = "git_enabled"
+        help.en = "none = public repo, token = HTTPS token (GitHub PAT, Gitea...), ssh = SSH key"
+        help.fr = "none = repo public, token = token HTTPS (GitHub PAT, Gitea...), ssh = clé SSH"
 
         [main.git.git_token]
         ask.en = "Access token"
         ask.fr = "Token d'accès"
         type = "password"
         optional = true
-        visible = "git_auth_method == token"
+        visible = "git_auth_method == 'token'"
         help.en = "Personal access token with read access to the repository."
         help.fr = "Token d'accès personnel avec accès en lecture au dépôt."
 
@@ -133,7 +133,7 @@ name.fr = "Configuration de My Node App"
         ask.fr = "Clé privée SSH"
         type = "text"
         optional = true
-        visible = "git_auth_method == ssh"
+        visible = "git_auth_method == 'ssh'"
         help.en = "Paste your SSH private key here. It will be stored securely in the app's data directory."
         help.fr = "Collez votre clé privée SSH ici. Elle sera stockée de manière sécurisée dans le répertoire data de l'app."
 
