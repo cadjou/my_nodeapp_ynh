@@ -137,14 +137,18 @@ name.fr = "Configuration de My Node App"
         help.en = "Paste your SSH private key here. It will be stored securely in the app's data directory."
         help.fr = "Collez votre clé privée SSH ici. Elle sera stockée de manière sécurisée dans le répertoire data de l'app."
 
-        [main.git.git_deploy_warning]
+    [main.git_actions]
+    name.en = "Git actions"
+    name.fr = "Actions Git"
+
+        [main.git_actions.git_deploy_warning]
         type = "alert"
         style = "warning"
         ask.en = "Deploying from Git will replace all files in the www/ directory. Make sure to backup your data before deploying if you have local modifications."
         ask.fr = "Le déploiement depuis Git remplacera tous les fichiers du répertoire www/. Pensez à sauvegarder vos données avant de déployer si vous avez des modifications locales."
         visible = "git_enabled"
 
-        [main.git.action_git_deploy]
+        [main.git_actions.action_git_deploy]
         ask.en = "Deploy from Git"
         ask.fr = "Déployer depuis Git"
         type = "button"
