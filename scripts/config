@@ -5,6 +5,58 @@ source /usr/share/yunohost/helpers
 ynh_abort_if_errors
 
 #=================================================
+# ENSURE GIT SETTINGS EXIST
+#=================================================
+# Initialize missing git settings so the config panel can detect changes
+
+if [ -z "$(ynh_app_setting_get --key=git_enabled 2>/dev/null)" ]; then
+    ynh_app_setting_set --key=git_enabled --value="0"
+fi
+if [ -z "$(ynh_app_setting_get --key=git_url 2>/dev/null)" ]; then
+    ynh_app_setting_set --key=git_url --value=""
+fi
+if [ -z "$(ynh_app_setting_get --key=git_branch 2>/dev/null)" ]; then
+    ynh_app_setting_set --key=git_branch --value="main"
+fi
+if [ -z "$(ynh_app_setting_get --key=git_auth_method 2>/dev/null)" ]; then
+    ynh_app_setting_set --key=git_auth_method --value="none"
+fi
+if [ -z "$(ynh_app_setting_get --key=git_token 2>/dev/null)" ]; then
+    ynh_app_setting_set --key=git_token --value=""
+fi
+if [ -z "$(ynh_app_setting_get --key=git_ssh_key 2>/dev/null)" ]; then
+    ynh_app_setting_set --key=git_ssh_key --value=""
+fi
+
+#=================================================
+# CUSTOM GETTERS — Force reading git settings
+#=================================================
+
+get__git_enabled() {
+    echo "${git_enabled:-0}"
+}
+
+get__git_url() {
+    echo "${git_url:-}"
+}
+
+get__git_branch() {
+    echo "${git_branch:-main}"
+}
+
+get__git_auth_method() {
+    echo "${git_auth_method:-none}"
+}
+
+get__git_token() {
+    echo "${git_token:-}"
+}
+
+get__git_ssh_key() {
+    echo "${git_ssh_key:-}"
+}
+
+#=================================================
 # HELPER: Install deps with the configured package manager
 #=================================================
 
